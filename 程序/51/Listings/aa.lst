@@ -1,0 +1,148 @@
+C51 COMPILER V9.60.7.0   AA                                                                11/23/2025 13:03:15 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE AA
+OBJECT MODULE PLACED IN .\Objects\aa.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE aa.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\aa.lst) 
+                    -TABS(2) OBJECT(.\Objects\aa.obj)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          
+   3          // 定义引脚
+   4          sbit in_d = P1^0; // PWM输出引脚
+   5          sbit KEY1 = P3^1;    // 挡位1按键
+   6          sbit KEY2 = P3^0;    // 挡位2按键
+   7          sbit KEY3 = P3^2;    // 挡位3按键
+   8          
+   9          // 数码管引脚定义（1位共阴极数码管）
+  10          #define DIGIT_PORT P0 // 段选端口
+  11          sbit DIGIT_SEL = P2^0; // 位选端口（若多位可扩展）
+  12          
+  13          // 定义PWM参数（周期=100μs，频率=10kHz）
+  14          #define PWM_PERIOD 100  // PWM周期（定时器计数次数）
+  15          unsigned char duty_cycle = 0; // 占空比（0~PWM_PERIOD）
+  16          unsigned char current_gear = 0; // 当前挡位（0~3，0为停止）
+  17          
+  18          // 挡位占空比配置（可根据实际需求调整）
+  19          #define GEAR1_DUTY 50   // 挡位2：50%占空比（中低速）
+  20          #define GEAR2_DUTY 75   // 挡位3：75%占空比（中高速）
+  21          #define GEAR3_DUTY 100  // 挡位4：100%占空比（高速）
+  22          
+  23          // 共阴极数码管段码表（0~9）
+  24          unsigned char code digit_table[] = {
+  25              0x3F, // 0
+  26              0x06, // 1
+  27              0x5B, // 2
+  28              0x4F, // 3
+  29              0x66, // 4
+  30              0x6D, // 5
+  31              0x7D, // 6
+  32              0x07, // 7
+  33              0x7F, // 8
+  34              0x6F  // 9
+  35          };
+  36          
+  37          // 延时函数（简单延时，可根据实际调整）
+  38          void delay(unsigned int time) {
+  39   1          unsigned int i, j;
+  40   1          for (i = time; i > 0; i--)
+  41   1              for (j = 110; j > 0; j--);
+  42   1      }
+  43          
+  44          // 定时器1初始化（产生PWM信号）
+  45          void Timer1_Init(void) {
+  46   1          TMOD &= 0x0F;  // 清空定时器1模式
+  47   1          TMOD |= 0x10;  // 定时器1工作模式1（16位自动重装）
+  48   1          TH1 = (65536 - PWM_PERIOD) / 256;  // 初值高8位
+  49   1          TL1 = (65536 - PWM_PERIOD) % 256;  // 初值低8位
+  50   1          ET1 = 1;       // 使能定时器1中断
+  51   1          TR1 = 1;       // 启动定时器1
+  52   1          EA = 1;        // 开启总中断
+  53   1      }
+  54          
+C51 COMPILER V9.60.7.0   AA                                                                11/23/2025 13:03:15 PAGE 2   
+
+  55          // 定时器1中断服务函数（PWM生成）
+  56          void Timer1_ISR(void) interrupt 3 {
+  57   1          static unsigned char count = 0;
+  58   1          TH1 = (65536 - PWM_PERIOD) / 256;  // 重装初值
+  59   1          TL1 = (65536 - PWM_PERIOD) % 256;
+  60   1          
+  61   1          count++;
+  62   1          if (count <= duty_cycle) {
+  63   2              in_d = 1;  // 高电平
+  64   2          } else {
+  65   2              in_d = 0;  // 低电平
+  66   2          }
+  67   1          if (count >= PWM_PERIOD) {
+  68   2              count = 0;    // 周期结束，重置计数
+  69   2          }
+  70   1      }
+  71          
+  72          // 数码管显示函数（显示当前挡位）
+  73          void Display_Gear(void) {
+  74   1          DIGIT_PORT = digit_table[current_gear]; // 输出段码
+  75   1          DIGIT_SEL = 0; // 选中数码管（共阴极位选低电平有效，若为共阳极需改为1）
+  76   1      }
+  77          
+  78          // 按键检测函数（消抖处理）
+  79          void Key_Scan(void) {
+  80   1          // 检测挡位2按键
+  81   1          if (KEY1 == 0) {
+  82   2              delay(20);
+  83   2              if (KEY1 == 0) {
+  84   3                  duty_cycle = GEAR1_DUTY;
+  85   3                  current_gear = 1;
+  86   3                  while (!KEY1);
+  87   3              }
+  88   2          }
+  89   1          // 检测挡位3按键
+  90   1          if (KEY2 == 0) {
+  91   2              delay(20);
+  92   2              if (KEY2 == 0) {
+  93   3                  duty_cycle = GEAR2_DUTY;
+  94   3                  current_gear = 2;
+  95   3                  while (!KEY2);
+  96   3              }
+  97   2          }
+  98   1          // 检测挡位4按键
+  99   1          if (KEY3 == 0) {
+ 100   2              delay(20);
+ 101   2              if (KEY3 == 0) {
+ 102   3                  duty_cycle = GEAR3_DUTY;
+ 103   3                  current_gear = 3;
+ 104   3                  while (!KEY3);
+ 105   3              }
+ 106   2          }
+ 107   1      }
+ 108          
+ 109          
+ 110          
+ 111          void main(void) {
+ 112   1          Timer1_Init();  // 初始化定时器1（PWM）
+ 113   1          duty_cycle = 0; // 初始转速为0（电机停止）
+ 114   1          current_gear = 0; // 初始挡位为0
+ 115   1          
+ 116   1          while (1) {
+C51 COMPILER V9.60.7.0   AA                                                                11/23/2025 13:03:15 PAGE 3   
+
+ 117   2              Key_Scan();  // 循环检测按键
+ 118   2              Display_Gear(); // 循环显示当前挡位
+ 119   2          }
+ 120   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    175    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

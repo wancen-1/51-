@@ -1,0 +1,178 @@
+C51 COMPILER V9.60.7.0   LCD                                                               12/25/2025 12:59:37 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE LCD
+OBJECT MODULE PLACED IN .\Objects\lcd.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE lcd.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\lcd.lst
+                    -) TABS(2) OBJECT(.\Objects\lcd.obj)
+
+line level    source
+
+   1          #include<reg52.h>
+   2          #include<intrins.h>
+   3          sbit RS=P2^6;
+   4          sbit RW=P2^5;
+   5          sbit E=P2^7;
+   6          sbit KEY3=P3^2;
+   7          sbit KEY4=P3^3;
+   8          
+   9          void delay()
+  10          {
+  11   1        _nop_();
+  12   1        _nop_();
+  13   1        _nop_();
+  14   1      }
+  15          
+  16          void delaysms(unsigned int ms) {
+  17   1          unsigned int i, j;
+  18   1          for(; ms > 0; ms--) {
+  19   2              for(i = 128; i > 0; i--) {
+  20   3                  for(j = 1; j > 0; j--);
+  21   3              }
+  22   2          }
+  23   1      }
+  24          
+  25          //void time_1(char i)
+  26          //{
+  27          //  char j;
+  28          //  for(j=0;j<i;j++)
+  29          //  {
+  30          //    TH0=(8192-50000)/32;
+  31          //    TL0=(8192-50000)%32;
+  32          //    TR0=1;
+  33          //    while(!TF0);
+  34          //    TF0=0;
+  35          //  }
+  36          //}
+  37          
+  38          void lcd_w_cmd(unsigned char com)//写命令
+  39          {
+  40   1        delaysms(255);
+  41   1        RS=0;
+  42   1        delay();
+  43   1        RW=0;
+  44   1        delay();
+  45   1        E=1;
+  46   1        delay();
+  47   1        P0=com;
+  48   1        delay();
+  49   1        E=0;
+  50   1        delay();
+  51   1        RW=1;
+  52   1        delaysms(1);
+  53   1      }
+  54          
+C51 COMPILER V9.60.7.0   LCD                                                               12/25/2025 12:59:37 PAGE 2   
+
+  55          void lcd_w_dat(unsigned char dat)//写数据
+  56          {
+  57   1        delaysms(255);
+  58   1        RS=1;
+  59   1        delay();
+  60   1        RW=0;
+  61   1        delay();
+  62   1        E=1;
+  63   1        delay();
+  64   1        P0=dat;
+  65   1        delay();
+  66   1        E=0;
+  67   1        delay();
+  68   1        RW=1;
+  69   1        delaysms(1);  // 修正：delayms -> delaysms
+  70   1      }
+  71          
+  72          void lcd_init()  // 初始化函数名
+  73          {
+  74   1       lcd_w_cmd(0x38);  // 改为5×8点阵，更通用
+  75   1       lcd_w_cmd(0x0e);  // 开显示+显示光标
+  76   1       lcd_w_cmd(0x01);  // 清屏
+  77   1       lcd_w_cmd(0x06);  // 光标右移，整屏不移动
+  78   1       lcd_w_cmd(0x80);  // 光标定位到第一行第1列
+  79   1      }
+  80          
+  81          void main()
+  82          {
+  83   1          TMOD=0x00;
+  84   1          EX0=1;
+  85   1          PX0=1;
+  86   1          IT0=1;
+  87   1          EX1=1;
+  88   1          PX1=1;
+  89   1          IT1=1;
+  90   1          EA=1;
+  91   1          P2=0xfe;
+  92   1        
+  93   1          while(1)
+  94   1          {
+  95   2      //      time_1(100);
+  96   2            
+  97   2          }
+  98   1      
+  99   1      }
+ 100          void int_0() interrupt 0
+ 101          {
+ 102   1        if(KEY3==0)
+ 103   1        {
+ 104   2            delaysms(1);
+ 105   2            if(KEY3==0)
+ 106   2            {
+ 107   3              unsigned char lcd[]="HELLO";
+ 108   3              //unsigned char lcd2[]="???!";
+ 109   3              unsigned char i;
+ 110   3              P0=0xff;
+ 111   3              lcd_init();     // 修正：lcd_int -> lcd_init
+ 112   3              delaysms(255);  // 修正：delayms -> delaysms
+ 113   3              lcd_w_cmd(0x83);// 光标定位到第一行第4列
+ 114   3              //lcd_w_cmd(0xc5);
+ 115   3              delaysms(255);  // 修正：delayms -> delaysms
+ 116   3              for(i=0;lcd[i]!='\0';i++)
+C51 COMPILER V9.60.7.0   LCD                                                               12/25/2025 12:59:37 PAGE 3   
+
+ 117   3              {
+ 118   4                lcd_w_dat(lcd[i]);
+ 119   4                delaysms(200); // 修正：delayms -> delaysms
+ 120   4              }
+ 121   3            }
+ 122   2        
+ 123   2        }
+ 124   1      }
+ 125          
+ 126          void int_1() interrupt 2
+ 127          {
+ 128   1          if(KEY4==0)
+ 129   1        {
+ 130   2            delaysms(1);
+ 131   2            if(KEY4==0)
+ 132   2            {
+ 133   3              unsigned char lcd[]="";
+ 134   3              //unsigned char lcd2[]="???!";
+ 135   3              unsigned char i;
+ 136   3              P0=0xff;
+ 137   3              lcd_init();     // 修正：lcd_int -> lcd_init
+ 138   3              delaysms(255);  // 修正：delayms -> delaysms
+ 139   3              lcd_w_cmd(0x83);// 光标定位到第一行第4列
+ 140   3              //lcd_w_cmd(0xc5);
+ 141   3              delaysms(255);  // 修正：delayms -> delaysms
+ 142   3              for(i=0;lcd[i]!='\0';i++)
+ 143   3              {
+ 144   4                lcd_w_dat(lcd[i]);
+ 145   4                delaysms(200); // 修正：delayms -> delaysms
+ 146   4              }
+ 147   3            }
+ 148   2        
+ 149   2        }
+ 150   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    399    ----
+   CONSTANT SIZE    =      7    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       9
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

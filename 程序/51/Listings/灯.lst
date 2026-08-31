@@ -1,0 +1,89 @@
+C51 COMPILER V9.60.7.0   __                                                                12/03/2025 15:38:26 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE __
+OBJECT MODULE PLACED IN .\Objects\µÆ.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE µÆ.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\µÆ.lst) 
+                    -TABS(2) OBJECT(.\Objects\µÆ.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include <intrins.h>
+   3          sbit key1=P3^2;
+   4          sbit key2=P3^3;
+   5          void time_1(char i)
+   6          {
+   7   1        char j;
+   8   1        for(j=0;j<i;j++)
+   9   1        {
+  10   2          TH0=(8192-50000)/32;
+  11   2          TL0=(8192-50000)%32;
+  12   2          TR0=1;
+  13   2          while(!TF0);
+  14   2          TF0=0;
+  15   2        }
+  16   1      }
+  17          
+  18          void main()
+  19          {
+  20   1        TMOD=0x00;
+  21   1        EX0=1;
+  22   1        PX0=1;
+  23   1        IT0=1;
+  24   1        EX1=1;
+  25   1        PX1=1;
+  26   1        IT1=1;
+  27   1        EA=1;
+  28   1        P2=0xfe;
+  29   1        while(1)
+  30   1        {
+  31   2          time_1(100);
+  32   2          P2=_crol_(P2,1);
+  33   2        }
+  34   1      }
+  35          void int_0() interrupt 0
+  36          {
+  37   1        char i,j;
+  38   1        j=P2;
+  39   1        P2=0x7f;
+  40   1        for(i=1;i<9;i++)
+  41   1        {
+  42   2          time_1(115);
+  43   2          P2 = ~(0xff << (8 - i));
+  44   2        }
+  45   1        while(!key1);
+  46   1        P2=j;
+  47   1      }
+  48          
+  49          void int_1() interrupt 2
+  50          {
+  51   1          char i,j;
+  52   1        j=P2;
+  53   1        P2=0x7f;
+  54   1        for(i=0;i<3;i++)
+C51 COMPILER V9.60.7.0   __                                                                12/03/2025 15:38:26 PAGE 2   
+
+  55   1        {
+  56   2          P2=0x00;
+  57   2          time_1(100);
+  58   2          P2=0xff;
+  59   2          time_1(100);
+  60   2        }
+  61   1        while(!key2);
+  62   1        P2=j;
+  63   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    203    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

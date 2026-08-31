@@ -1,0 +1,361 @@
+C51 COMPILER V9.60.7.0   MAIN                                                              12/25/2025 13:09:31 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main.l
+                    -st) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include<intrins.h>
+   3           
+   4          sbit Trig = P1^2;   // 超声波触发引脚
+   5          sbit Echo = P1^1;   // 超声波接收引脚
+   6          sbit LED1 = P2^0;    // LED控制引脚
+   7          sbit in_d=P1^0;   //电机
+   8          sbit KEY1 = P3^1;    // 挡位1按键
+   9          sbit KEY2 = P3^0;    // 挡位2按键
+  10          sbit KEY3 = P3^2;    // 挡位3按键
+  11          sbit RS=P2^6;       // lcd rs口
+  12          sbit RW=P2^5;       // lcd rw口
+  13          sbit E=P2^7;        // lcd e口
+  14          
+  15          // 数码管引脚定义（1位共阴极数码管）
+  16          #define DIGIT_PORT P0 // 段选端口
+  17          sbit DIGIT_SEL = P2^1; // 位选端口（若多位可扩展）
+  18          
+  19          // 定义PWM参数（周期=100μs，频率=10kHz）
+  20          #define PWM_PERIOD 100  // PWM周期（定时器计数次数）
+  21          unsigned char duty_cycle = 0; // 占空比（0~PWM_PERIOD）
+  22          unsigned char current_gear = 0; // 当前挡位（0~3，0为停止）
+  23          
+  24          // 挡位占空比配置（可根据实际需求调整）
+  25          #define GEAR1_DUTY 50   // 挡位2：50%占空比（中低速）
+  26          #define GEAR2_DUTY 75   // 挡位3：75%占空比（中高速）
+  27          #define GEAR3_DUTY 100  // 挡位4：100%占空比（高速）
+  28          
+  29          typedef char u8;
+  30          typedef int u16;
+  31          
+  32          // 共阴极数码管段码表（0~9）
+  33          unsigned char code digit_table[] = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F};
+  34          
+  35          void Timer1_Init(void) {
+  36   1          TMOD &= 0xF0;  // 清空定时器1模式
+  37   1          TMOD |= 0x01;  // 定时器1工作模式1（16位自动重装）
+  38   1          TH0 = (65536 - PWM_PERIOD) / 256;  // 初值高8位
+  39   1          TL0 = (65536 - PWM_PERIOD) % 256;  // 初值低8位
+  40   1          ET0 = 1;       // 使能定时器1中断
+  41   1          TR0 = 1;       // 启动定时器1
+  42   1          EA = 1;        // 开启总中断
+  43   1      }
+  44          
+  45          // 定时器1中断服务函数（PWM生成）电机的快慢
+  46          void Timer1_ISR(void) interrupt 1 {
+  47   1          static unsigned char count = 0;
+  48   1          TH0 = (65536 - PWM_PERIOD) / 256;  // 重装初值
+  49   1          TL0 = (65536 - PWM_PERIOD) % 256;
+  50   1          
+  51   1          count++;
+  52   1          if (count <= duty_cycle) {
+  53   2              in_d = 1;  // 高电平
+  54   2          } else {
+C51 COMPILER V9.60.7.0   MAIN                                                              12/25/2025 13:09:31 PAGE 2   
+
+  55   2              in_d = 0;  // 低电平
+  56   2          }
+  57   1          if (count >= PWM_PERIOD) {
+  58   2              count = 0;    // 周期结束，重置计数
+  59   2          }
+  60   1      }
+  61          
+  62          //语音模块配置接口
+  63          void UART_Init()
+  64          {
+  65   1        
+  66   1        SCON = 0x50;//配置串口的通信方式
+  67   1        TMOD &= 0x0F;
+  68   1        TMOD |= 0x20;
+  69   1        TH1 = 256 - (11059200 / 12 / 32) / 9600;//装载需要计算
+  70   1        TL1 = TH1;
+  71   1        TR1 = 1;
+  72   1        ES = 1;
+  73   1      //  PS=1;
+  74   1        EA = 1;
+  75   1      }
+  76          
+  77          //微秒
+  78          void Delay10us() {
+  79   1          unsigned char i;
+  80   1          i = 2;
+  81   1          while (--i);
+  82   1      }
+  83          
+  84          void delay()
+  85          {
+  86   1        _nop_();
+  87   1        _nop_();
+  88   1        _nop_();
+  89   1      }
+  90          // 毫秒级延时（用于主循环间隔）
+  91          void DelayMs(unsigned int ms) 
+  92          {
+  93   1          unsigned int i, j;
+  94   1          for (i = ms; i > 0; i--)
+  95   1              for (j = 110; j > 0; j--);
+  96   1      }
+  97          
+  98          // 数码管显示函数（显示当前挡位）
+  99          void Display_Gear(void) 
+ 100          {
+ 101   1          DIGIT_PORT = digit_table[current_gear]; // 输出段码
+ 102   1          DIGIT_SEL = 0; // 选中数码管（共阴极位选低电平有效，若为共阳极需改为1）
+ 103   1          DelayMs(1);
+ 104   1      }
+ 105          
+ 106          // 测量距离并返回（单位：cm）
+ 107          unsigned int GetDistance() 
+ 108          {
+ 109   1          unsigned int time = 0;
+ 110   1          unsigned int distance = 0;
+ 111   1      
+ 112   1          // 发送触发信号：10us高电平
+ 113   1          Trig = 1;
+ 114   1          Delay10us();
+ 115   1          Trig = 0;
+ 116   1      
+C51 COMPILER V9.60.7.0   MAIN                                                              12/25/2025 13:09:31 PAGE 3   
+
+ 117   1          // 等待Echo上升沿（开始接收回波）
+ 118   1          while (Echo == 0);
+ 119   1          // 计时Echo高电平持续时间（回波接收时间）
+ 120   1          while (Echo == 1) {
+ 121   2              time++;
+ 122   2              Delay10us();
+ 123   2              if (time > 60000) break; // 超时保护，避免死循环
+ 124   2          }
+ 125   1      
+ 126   1          // 计算距离：距离(cm) = 时间(us) * 声速(340m/s) / 2 / 10000
+ 127   1          distance = time * 0.17;
+ 128   1          return distance;
+ 129   1      }
+ 130          
+ 131          void lcd_w_cmd(unsigned char com)//写命令
+ 132          {
+ 133   1        DelayMs(1);
+ 134   1        RS=0;
+ 135   1        delay();
+ 136   1        RW=0;
+ 137   1        delay();
+ 138   1        E=1;
+ 139   1        delay();
+ 140   1        P0=com;
+ 141   1        delay();
+ 142   1        E=0;
+ 143   1        delay();
+ 144   1        RW=1;
+ 145   1        DelayMs(1);
+ 146   1      }
+ 147          
+ 148          void lcd_w_dat(unsigned char dat)//写数据
+ 149          {
+ 150   1        DelayMs(1);
+ 151   1        RS=1;
+ 152   1        delay();
+ 153   1        RW=0;
+ 154   1        delay();
+ 155   1        E=1;
+ 156   1        delay();
+ 157   1        P0=dat;
+ 158   1        delay();
+ 159   1        E=0;
+ 160   1        delay();
+ 161   1        RW=1;
+ 162   1        DelayMs(1);  // 修正：delayms -> delaysms
+ 163   1      }
+ 164          
+ 165          void lcd_init()  // 初始化函数名
+ 166          {
+ 167   1       lcd_w_cmd(0x38);  // 改为5×8点阵，更通用
+ 168   1       lcd_w_cmd(0x0c);  // 开显示+显示光标
+ 169   1       lcd_w_cmd(0x01);  // 清屏
+ 170   1       lcd_w_cmd(0x06);  // 光标右移，整屏不移动
+ 171   1       lcd_w_cmd(0x80);  // 光标定位到第一行第1列
+ 172   1      }
+ 173          
+ 174          void lcd_1(unsigned char *a)
+ 175          {
+ 176   1        //unsigned char lcd2[]="???!";
+ 177   1        P0=0xff;
+ 178   1        DelayMs(1);
+C51 COMPILER V9.60.7.0   MAIN                                                              12/25/2025 13:09:31 PAGE 4   
+
+ 179   1        lcd_w_cmd(0x83);// 光标定位到第一行第4列
+ 180   1        //lcd_w_cmd(0xc5);
+ 181   1        DelayMs(1); 
+ 182   1        while(*a != '\0') 
+ 183   1          {
+ 184   2          lcd_w_dat(*a);
+ 185   2          a++;
+ 186   2          DelayMs(1);
+ 187   2          }
+ 188   1        
+ 189   1      }
+ 190          
+ 191          // 按键检测函数（消抖处理）
+ 192          void Key_Scan(void) {
+ 193   1          // 检测挡位1按键
+ 194   1          if (KEY1 == 0) {
+ 195   2              DelayMs(10);
+ 196   2              if (KEY1 == 0) {
+ 197   3                  duty_cycle = GEAR1_DUTY;
+ 198   3                  current_gear = 1;
+ 199   3                  lcd_1("1");
+ 200   3                  while (!KEY1);
+ 201   3              }
+ 202   2          }
+ 203   1          // 检测挡位2按键
+ 204   1          if (KEY2 == 0) {
+ 205   2              DelayMs(10);
+ 206   2              if (KEY2 == 0) {
+ 207   3                  duty_cycle = GEAR2_DUTY;
+ 208   3                  current_gear = 2;
+ 209   3                  lcd_1("2");
+ 210   3                  while (!KEY2);
+ 211   3              }
+ 212   2          }
+ 213   1          // 检测挡位3按键
+ 214   1          if (KEY3 == 0) {
+ 215   2              DelayMs(10);
+ 216   2              if (KEY3 == 0) {
+ 217   3                  duty_cycle = GEAR3_DUTY;
+ 218   3                  current_gear = 3;
+ 219   3                  lcd_1("3");
+ 220   3                  while (!KEY3);
+ 221   3              }
+ 222   2          }
+ 223   1      }
+ 224          
+ 225          
+ 226          unsigned int tempt,i;
+ 227          void main(void)
+ 228          {
+ 229   1      //  u8 dir=0;
+ 230   1        lcd_init();
+ 231   1        UART_Init();                  //置T0定时工作方式1
+ 232   1        Timer1_Init();
+ 233   1        EA = 1;  //开总中断
+ 234   1        LED1 = 1;      // 初始状态：LED熄灭
+ 235   1        duty_cycle = 0; // 初始转速为0（电机停止）
+ 236   1        current_gear = 0; // 初始挡位为0
+ 237   1        while(1)
+ 238   1        {
+ 239   2           Key_Scan();  // 循环检测按键
+ 240   2           Display_Gear(); // 循环显示当前挡位
+C51 COMPILER V9.60.7.0   MAIN                                                              12/25/2025 13:09:31 PAGE 5   
+
+ 241   2      
+ 242   2          if(tempt==0x34)//正转
+ 243   2          {
+ 244   3            DelayMs(1000);
+ 245   3            duty_cycle = GEAR3_DUTY;
+ 246   3            current_gear = 3;
+ 247   3            lcd_1("3");
+ 248   3            tempt=0x00;
+ 249   3          }
+ 250   2          if(tempt==0x35)//停止
+ 251   2          {
+ 252   3            DelayMs(1000);
+ 253   3            duty_cycle=0;
+ 254   3            current_gear = 0;
+ 255   3            lcd_1("0");
+ 256   3            tempt=0x00;
+ 257   3          }
+ 258   2          if(tempt==0x33)//LED灯开启
+ 259   2          {
+ 260   3            DelayMs(1000);
+ 261   3            for(i=0;i<7;i++)
+ 262   3            {DelayMs(300);
+ 263   4            P2=0x7f>>i;}
+ 264   3            tempt=0x00;
+ 265   3          }
+ 266   2          if(tempt==0x32)//LED灯关闭
+ 267   2          {
+ 268   3            DelayMs(1000);
+ 269   3            for(i=1;i<9;i++)
+ 270   3            {DelayMs(300);
+ 271   4            P2=~(0x7f<<i);}
+ 272   3            tempt=0x00;
+ 273   3          }
+ 274   2          if(tempt==0x36)//1档
+ 275   2          {
+ 276   3            DelayMs(1000);
+ 277   3            duty_cycle = GEAR1_DUTY;
+ 278   3            current_gear = 1;
+ 279   3            lcd_1("1");
+ 280   3            tempt=0x00;
+ 281   3          }
+ 282   2          if(tempt==0x37)//2档
+ 283   2          {
+ 284   3            DelayMs(1000);
+ 285   3            duty_cycle = GEAR2_DUTY;
+ 286   3            current_gear = 2;
+ 287   3            lcd_1("2");
+ 288   3            tempt=0x00;
+ 289   3          }
+ 290   2          if(tempt==0x38)//3档
+ 291   2          {
+ 292   3            DelayMs(1000);
+ 293   3            duty_cycle = GEAR3_DUTY;
+ 294   3            current_gear = 3;
+ 295   3            lcd_1("3");
+ 296   3            tempt=0x00;
+ 297   3          }
+ 298   2          // 根据距离控制LED
+ 299   2          if (GetDistance()< 2) // 距离小于10cm，LED亮
+ 300   2          {      
+ 301   3              LED1 = 0;
+ 302   3              duty_cycle=0;
+C51 COMPILER V9.60.7.0   MAIN                                                              12/25/2025 13:09:31 PAGE 6   
+
+ 303   3              current_gear = 0;
+ 304   3              lcd_1("0");
+ 305   3              
+ 306   3           } 
+ 307   2           else 
+ 308   2           {             // 距离大于10cm，LED灭
+ 309   3              LED1 = 1;
+ 310   3      
+ 311   3           }
+ 312   2              DelayMs(20); // 延时刷新，避免频繁检测
+ 313   2      
+ 314   2          }
+ 315   1      }
+ 316          
+ 317          void InterruptUART() interrupt 4
+ 318          {
+ 319   1        if(RI)
+ 320   1        {
+ 321   2          tempt = SBUF;
+ 322   2          RI= 0;
+ 323   2      //    led1 =0;
+ 324   2          
+ 325   2        }
+ 326   1      }
+ 327          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    803    ----
+   CONSTANT SIZE    =     18    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      7       5
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

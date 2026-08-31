@@ -1,0 +1,143 @@
+C51 COMPILER V9.60.7.0   ____                                                              11/20/2025 19:50:15 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE ____
+OBJECT MODULE PLACED IN .\Objects\电机.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE D:\keil5\练习\步进电机\电机.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND 
+                    -PRINT(.\Listings\电机.lst) TABS(2) OBJECT(.\Objects\电机.obj)
+
+line level    source
+
+   1          #include <regx52.h>
+   2          
+   3          typedef char u8;
+   4          typedef int u16;
+   5          
+   6          sbit in_d=P1^0;
+   7          sbit in_c=P1^1;
+   8          sbit in_b=P1^2;
+   9          sbit in_a=P1^3;
+  10          
+  11          #define key1_r 1
+  12          #define key2_r 2
+  13          #define key3_r 3
+  14          #define key4_r 4
+  15          #define key_u 0
+  16          
+  17          #define set_man 1
+  18          #define set_min 5
+  19          
+  20          sbit key1=P3^1;
+  21          sbit key2=P3^0;
+  22          sbit key3=P3^2;
+  23          sbit key4=P3^3;
+  24          
+  25          
+  26          
+  27          //void delay( int ten)
+  28          //{
+  29          //  while(ten--);
+  30          //}
+  31          
+  32          void delay_m(u8 ms)
+  33          {
+  34   1        u16 i,j;
+  35   1        for(i=ms;i>0;i--)
+  36   1          for(j=110;j>0;j--);
+  37   1      }
+  38          
+  39          //u8 key_scan(u8 mode)
+  40          //{
+  41          //  static u8 key=1;
+  42          //  
+  43          //  if(mode)key=1;
+  44          //  if(key==1 && (key1==0||key2==0||key3==0||key4==0))
+  45          //  {
+  46          //    delay(1000);
+  47          //    key=0;
+  48          //    if(key1==0)
+  49          //      return key1_r;
+  50          //    else if(key2==0)
+  51          //      return key2_r;
+  52          //    else if(key3==0)
+  53          //      return key3_r;
+  54          //    else if(key4==0)
+C51 COMPILER V9.60.7.0   ____                                                              11/20/2025 19:50:15 PAGE 2   
+
+  55          //      return key4_r;
+  56          //  }
+  57          //  else if (key1==1 && key2==1 && key3==1 && key4==1)
+  58          //  {
+  59          //    key=1;
+  60          //  }
+  61          //  return key_u;
+  62          //}
+  63          
+  64          void step(u8 step,u8 dir)
+  65          {
+  66   1        u8 temp=step;
+  67   1        
+  68   1        if(dir==0)
+  69   1          temp=7-step;
+  70   1        switch(step)
+  71   1        {
+  72   2          case 0:in_d=0;in_c=1;in_b=1;in_a=1;break;
+  73   2          case 1:in_d=0;in_c=0;in_b=1;in_a=1;break;
+  74   2          case 2:in_d=1;in_c=0;in_b=1;in_a=1;break;
+  75   2          case 3:in_d=1;in_c=0;in_b=0;in_a=1;break;
+  76   2          case 4:in_d=1;in_c=1;in_b=0;in_a=1;break;
+  77   2          case 5:in_d=1;in_c=1;in_b=0;in_a=0;break;
+  78   2          case 6:in_d=1;in_c=1;in_b=1;in_a=0;break;
+  79   2          case 7:in_d=0;in_c=1;in_b=1;in_a=0;break;
+  80   2        }
+  81   1      }
+  82          
+  83          void main()
+  84          {
+  85   1        u8 key=0;
+  86   1        u8 dir=0;
+  87   1        u8 i=0;
+  88   1      //  u8 m=set_man;
+  89   1        while(1)
+  90   1        {
+  91   2      //    key=key_scan(0);
+  92   2      //    if(key==key1_r)
+  93   2      //      dir=!dir;
+  94   2      //    else if(key==key2_r)//加速度
+  95   2      //    {
+  96   2      //      if(m>set_man)
+  97   2      //      {
+  98   2      //        m-=1;
+  99   2      //      }
+ 100   2      //    }
+ 101   2      //    else if(key==key3_r)//减速度
+ 102   2      //    {
+ 103   2      //      if(m<set_min)
+ 104   2      //      {
+ 105   2      //        m+=1;
+ 106   2      //      }
+ 107   2      //    }
+ 108   2      for(i=0;i<8;i++)
+ 109   2            {delay_m(5);step(i,dir);}
+ 110   2      //    step(i++,dir);
+ 111   2          if(i==8)
+ 112   2            i=0;
+ 113   2      //    delay_m(5);
+ 114   2        }
+ 115   1      }
+
+C51 COMPILER V9.60.7.0   ____                                                              11/20/2025 19:50:15 PAGE 3   
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    171    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

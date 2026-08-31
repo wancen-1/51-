@@ -1,0 +1,90 @@
+C51 COMPILER V9.60.7.0   ______                                                            11/21/2025 09:25:19 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE ______
+OBJECT MODULE PLACED IN .\Objects\超声波.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE 超声波.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\超声
+                    -波.lst) TABS(2) OBJECT(.\Objects\超声波.obj)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          
+   3          // 定义引脚
+   4          sbit Trig = P1^0;   // 超声波触发引脚
+   5          sbit Echo = P1^1;   // 超声波接收引脚
+   6          sbit LED = P2^0;    // LED控制引脚
+   7          sbit in_d=P1^0;   //电机
+   8          
+   9          // 10微秒延时函数（11.0592MHz晶振）
+  10          void Delay10us() {
+  11   1          unsigned char i;
+  12   1          i = 2;
+  13   1          while (--i);
+  14   1      }
+  15          
+  16          // 毫秒级延时（用于主循环间隔）
+  17          void DelayMs(unsigned int ms) {
+  18   1          unsigned int i, j;
+  19   1          for (i = ms; i > 0; i--)
+  20   1              for (j = 110; j > 0; j--);
+  21   1      }
+  22          
+  23          // 测量距离并返回（单位：cm）
+  24          unsigned int GetDistance() {
+  25   1          unsigned int time = 0;
+  26   1          unsigned int distance = 0;
+  27   1      
+  28   1          // 发送触发信号：10us高电平
+  29   1          Trig = 1;
+  30   1          Delay10us();
+  31   1          Trig = 0;
+  32   1      
+  33   1          // 等待Echo上升沿（开始接收回波）
+  34   1          while (Echo == 0);
+  35   1          // 计时Echo高电平持续时间（回波接收时间）
+  36   1          while (Echo == 1) {
+  37   2              time++;
+  38   2              Delay10us();
+  39   2              if (time > 60000) break; // 超时保护，避免死循环
+  40   2          }
+  41   1      
+  42   1          // 计算距离：距离(cm) = 时间(us) * 声速(340m/s) / 2 / 10000
+  43   1          distance = time * 0.17;
+  44   1          return distance;
+  45   1      }
+  46          
+  47          void main() {
+  48   1          unsigned int dis;
+  49   1          in_d=1;
+  50   1          while (1) {
+  51   2              dis = GetDistance(); // 获取当前距离
+  52   2              
+  53   2              // 根据距离控制LED
+  54   2              if (dis < 2) {      // 距离小于10cm，LED亮
+C51 COMPILER V9.60.7.0   ______                                                            11/21/2025 09:25:19 PAGE 2   
+
+  55   3                  LED = 0;
+  56   3                  in_d=0;
+  57   3              } else {             // 距离大于10cm，LED灭
+  58   3                  LED = 1;
+  59   3                  in_d=1;
+  60   3              }
+  61   2              
+  62   2              DelayMs(200); // 延时刷新，避免频繁检测
+  63   2          }
+  64   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    143    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
